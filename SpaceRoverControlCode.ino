@@ -1,3 +1,5 @@
+// This code enables you to control a space rover with it's gripper using a dualshock 2 controller, using the ps2x library written by http://www.billporter.info
+
 #include <PS2X_lib.h>  //for v1.6
 
 #include <Wire.h>
@@ -33,43 +35,39 @@ int Gripper = 0;
 
 int PS2 = 0; 
 
-int UP = 14; 
-int DOWN = 15; 
-int LEFT = 16; 
-int RIGHT = 17;
-
 int error = 0;
 byte type = 0;
 byte vibrate = 0;
 
 int Speed = 180;
 
+// Power transmission to motors is done using relays
+    // it's not the best way as it only enables limited movements with not control over the speed, only the direction
 //Motor 1 
-int MFR = 23; 
-int MBR = 22;
+int MFR = 23;  // Motor Front Right
+int MBR = 22;  // Motor Back Right
 //Motor 2
-int MFL = 25; 
-int MBL = 24;
+int MFL = 25;  // Motor Front Left
+int MBL = 24;  // Motor Back Left
 
 void setup(){
+  // configuring the ps2 controller 
   PS2 = error = ps2x.config_gamepad(PS2_CLK, PS2_CMD, PS2_SEL, PS2_DAT, pressures, rumble);
   type = ps2x.readType(); 
-
-    pinMode (UP, OUTPUT); 
-    pinMode (DOWN, OUTPUT); 
-    pinMode (LEFT, OUTPUT); 
-    pinMode (RIGHT, OUTPUT);
-
+  
+  
+    // Setting up the digital pins to which the relays are connected
     pinMode (MFR, OUTPUT);
     pinMode (MBR, OUTPUT);
     pinMode (MFL, OUTPUT);
     pinMode (MBL, OUTPUT);
-    
+    // Ensuring all relays are turned off before starting to avoid unexpected behaviour
     digitalWrite(MFR, LOW);
     digitalWrite(MBR, LOW);
     digitalWrite(MFL, LOW);
     digitalWrite(MBL, LOW);
-
+    
+    // Setting up the servo motors of the gripper
     pwm.begin();
     pwm.setPWMFreq(60);
     
@@ -79,62 +77,59 @@ void setup(){
 void loop(){
   
     ps2x.read_gamepad(false, vibrate);  
-
-    /*vibrate = ps2x.Analog(PSAB_CROSS);
+    
+    // You can test wether the controller is connected if you press the X buttong and the controller vibrates
+  
+    vibrate = ps2x.Analog(PSAB_CROSS);
     if(ps2x.NewButtonState(PSB_CROSS)) {              //will be TRUE if button was JUST pressed OR released
       
       ps2x.read_gamepad(true, vibrate);
       
       }
-      */
-    if (ps2x.Button(PSB_PAD_UP)) {
-      Forward();
-    } else if (ps2x.Button(PSB_PAD_DOWN)) {
-          Serial.println(MFR);
-      Backward();
-    } else if (ps2x.Button(PSB_PAD_LEFT)) {
-      Left();
-    } else if (ps2x.Button(PSB_PAD_RIGHT)) {
-      Right();
-    } else {
-      Stop();
-    }
     
-    //Add different moves 
-    // YAW
-     while ((ps2x.Analog(PSS_RY) < 30 && YAW0 >= 60 && YAW1 <= 120 )) {
+  
+    // Press UP arrow to move forward
+    if (ps2x.Button(PSB_PAD_UP)) {
+          Forward();} 
+    // Press DOWN arrow to move backward
+    else if (ps2x.Button(PSB_PAD_DOWN)) {
+          Serial.println(MFR);
+          Backward();}
+    // Press LEFT arrow to move left 
+    else if (ps2x.Button(PSB_PAD_LEFT)) {
+      Left();}
+    // Press RIGHT arrow to move right
+    else if (ps2x.Button(PSB_PAD_RIGHT)) {
+      Right();} 
+    // If no command is sent stop all motors
+    else {
+      Stop();}
+    
+    // YAW of the robotic arm 
+        // Move the Right Analog joystick UP to move the robotic arm UP 
+     while ((ps2x.Analog(PSS_RY) > 225 && YAW0 >= 60 && YAW1 <= 120 )) {
        YAW0 -= 1; 
        YAW1 += 1; 
        pwm.setPWM(servon0, 0, pulseWidth(YAW0));
        pwm.setPWM(servon1, 0, pulseWidth(YAW1)); 
        delay(15); 
     }
-     while ((ps2x.Analog(PSS_RY) > 225 && YAW0 <= 120 && YAW1 >= 60)) {
+        // Move the Right Analog joystick DOWN to move the robotic arm DOWN
+     while ((ps2x.Analog(PSS_RY) < 30 && YAW0 <= 120 && YAW1 >= 60)) {
        YAW0 += 1; 
        YAW1 -= 1; 
        pwm.setPWM(servon0, 0, pulseWidth(YAW0));
        pwm.setPWM(servon1, 0, pulseWidth(YAW1)); 
        delay(15);
     }
-
-
-    //BASE SERVO
-    /* while (ps2x.Analog(PSS_RX) < 30 && BaseServo <= 150) {
-      BaseServo += 1;
-      pwm.setPWM(servon2, 0, pulseWidth(BaseServo));
-      delay(15); 
-    } while (ps2x.Analog(PSS_RX) > 225 && BaseServo >= 30 ) {
-      BaseServo -= 1;
-      pwm.setPWM(servon2, 0, pulseWidth(BaseServo)); 
-      delay(15);
-    }*/
-
-    //Gripper
+    // Control the Gripper
+    // Press R1 to close the gripper
     while (ps2x.ButtonPressed(PSB_R1) && Gripper >= 0 ) {
       Gripper -= 1;
       pwm.setPWM(servon4, 0, pulseWidth(Gripper));
       delay(15); 
     } 
+    // Press R2 to close the gripper
     while (ps2x.ButtonPressed(PSB_R2) && Gripper <= 120) {
       Gripper += 1;
       pwm.setPWM(servon4, 0, pulseWidth(Gripper)); 
@@ -146,7 +141,7 @@ void loop(){
 
 }
 
-
+// Convert the angle to PWM signal that's understood by the Servo control board (PCA 16 servos module)
 int pulseWidth(int angle)
 {
   int pulse_wide, analog_value;
@@ -156,6 +151,8 @@ int pulseWidth(int angle)
   return analog_value;
 }
 
+
+// Move the robot forward
 void Forward(){
     
     digitalWrite(MFR, HIGH);
@@ -166,6 +163,7 @@ void Forward(){
     
 }
 
+// Move the robot backward
 void Backward(){
     
     digitalWrite(MFR, LOW);
@@ -176,6 +174,7 @@ void Backward(){
 
 }
 
+// Move the robot left
 void Left(){
     
     digitalWrite(MFR, HIGH);
@@ -186,6 +185,7 @@ void Left(){
     
 }
 
+// Move the robot right
 void Right(){
 
     digitalWrite(MFR, LOW);
@@ -196,6 +196,7 @@ void Right(){
 
 }
 
+// Stop the robot
 void Stop() {
     
     digitalWrite(MFR, LOW);
