@@ -1,4 +1,4 @@
-# Capture Video from Camera
+# Capture Video from Camera and Display it fullscreen
 import numpy as np
 import cv2
 
