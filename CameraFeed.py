@@ -1,10 +1,11 @@
+#this code detects yellow, blue, and red colors based on the treshhold you give it
+
 from tkinter import *
 import datetime
 from cv2 import *
 from sys import *
 from time import *
 from numpy import *
-from imutils import *
 from collections import *
 import numpy as np
 import math
